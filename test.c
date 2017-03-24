@@ -214,7 +214,6 @@ void driveSquare(){
     calculateIR(&irLeft, &irRight, &irLeftOld, &irRightOld);
     left = leftStart, right = rightStart;
     drive_setRampStep(6);
-
     while(left < leftStart+dist || right < rightStart+dist){
         drive_getTicks(&left, &right);
 
@@ -707,18 +706,22 @@ void exitFaster()
         if(path[i+1]==path[i]+1)
         {
             faceEast();
+            i++;
         }
         if(path[i+1]==path[i]+4)
         {
             faceNorth();
+            i++;
         }
         if(path[i+1]==path[i]-1)
         {
             faceWest();
+            i++;
         }
         if(path[i+1]==path[i]-4)
         {
             faceSouth();
+            i++;
         }
         drive_goto(size/tickLength+7,size/tickLength+7);
     }
