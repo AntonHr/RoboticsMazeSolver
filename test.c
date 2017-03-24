@@ -4,6 +4,10 @@
 #include "ping.h"
 #include "math.h"
 
+/*
+Flash lights
+*/
+
 const int squareSize = 365; //size of the squares in the maze
 const float tickLength = 3.25;
 /**
@@ -22,8 +26,7 @@ const int west =8; //1000
  |04|05|06|07|
  |00|01|02|03|
  */
-unsigned int matrix [16] = {8,5,5,6,9,6,12,3,12,1,1,4,9,5,7,11};
-//unsigned int matrix [16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+unsigned int matrix [16] = {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 unsigned int discovered [16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //0-not discovered 1-discovered
 int direction = 1; //facing direction of the robot; 1-north 2-east 4-south 8-west
 int irLeft, irRight;  //Infrared distances left and right
@@ -109,7 +112,7 @@ void calculateIR(int * irLeft, int * irRight, int * irLeftOld, int * irRightOld)
         dac_ctr(26, 0, dacVal);
         freqout(11, 1, 38000);
         *irLeft += input(10);
-        
+
         dac_ctr(27, 1, dacVal);
         freqout(1, 1, 38000);
         *irRight += input(2);
@@ -127,7 +130,7 @@ void getIR()
         dac_ctr(26, 0, 0);
         freqout(11, 1, 38000);
         irLeft += input(10);
-        
+
         dac_ctr(27, 1, 0);
         freqout(1, 1, 38000);
         irRight += input(2);
@@ -138,12 +141,6 @@ int abs(int x)
     if(x<0)
     return -x;
     return x;
-}
-
-void rotate180()
-{
-    drive_goto(0,0);
-    drive_goto(51,-51);
 }
 /**
  * returns the number indicating what the direction is going to be
@@ -207,24 +204,25 @@ int checkWest(int bits)
 /**
  * Moves one square ahead
  */
+
 void driveSquare(){
     int dist = squareSize/tickLength;
     int left, right, leftStart, rightStart;
     int irLeft, irRight, irLeftOld, irRightOld;
-    
+
     drive_getTicks(&leftStart, &rightStart);
     calculateIR(&irLeft, &irRight, &irLeftOld, &irRightOld);
     left = leftStart, right = rightStart;
     drive_setRampStep(6);
-    
+
     while(left < leftStart+dist || right < rightStart+dist){
         drive_getTicks(&left, &right);
-        
+
         calculateIR(&irLeft, &irRight, &irLeftOld, &irRightOld);
-        
+
         int dl = irLeft-irLeftOld; if(dl>3||dl<-3) dl=0;
         int dr = irRight-irRightOld; if(dr>3||dr<-3) dr=0;
-        
+
         int correcterLeft = (irRight-irLeft)*1; correcterLeft=0;
         int correcterRight = (irLeft-irRight)*1; correcterRight=0;
         if(left-leftStart>dist/3 || right-rightStart>dist/3)
@@ -244,6 +242,7 @@ void driveSquare(){
     drive_ramp(0,0);
     drive_setRampStep(4);
 }
+
 
 /**
  * Analyzes a square and updates the matrix if it detects obstacles
@@ -279,11 +278,22 @@ void turnInPlace(double angle){
 
 void turnLeft()
 {
-    turnInPlace(-PI/2);
+    //turnInPlace(-PI/2);
+    drive_goto(0,0);
+    drive_goto(-25,26);
+    drive_goto(0,0);
 }
 void turnRight()
 {
-    turnInPlace(PI/2);
+  //turnInPlace(PI/2);
+  drive_goto(0,0);
+  drive_goto(26,-25);
+  drive_goto(0,0);
+}
+void rotate180()
+{
+    turnRight();
+    turnRight();
 }
 
 /**
@@ -516,6 +526,21 @@ void depthFirstSearch()
         drive_speed(10,10);
     }
     drive_speed(0,0);
+    int correction = ping_cm(8);
+    if(correction!=20)
+    {
+      while(correction>20){
+        drive_goto(1,1);
+        correction = ping_cm(8);
+      }
+    }
+    else{
+      while(correction<20)
+      {
+        drive_goto(-1,-1);
+        correction = ping_cm(8);
+      }
+    }
     rotate180();
     direction=1;
 }
@@ -636,6 +661,8 @@ void exitMaze()
 
 void exitFaster()
 {
+    pause(2000);
+    int size = 380;
     int i;
    // drive_goto(squareSize/tickLength,squareSize/tickLength);
     int newPath[17];
@@ -654,7 +681,7 @@ void exitFaster()
             i++;
         }
         printf("k: %d i: %d \n",k,i);
-        drive_goto(squareSize*k/tickLength+7,squareSize*k/tickLength+7);
+        drive_goto(size*k/tickLength+7,size*k/tickLength+7);
         if(path[i+1]==path[i]+1)
         {
             faceEast();
@@ -693,18 +720,15 @@ void exitFaster()
         {
             faceSouth();
         }
-        drive_goto(squareSize/tickLength+7,squareSize/tickLength+7);
+        drive_goto(size/tickLength+7,size/tickLength+7);
     }
-    
+
 }
 
-
-//matrix in beginning is changed for testing. Revert it to 0,0,0... and uncomment DFS below
 int main() {
     center();
-    //depthFirstSearch();
+    depthFirstSearch();
     Dijkstra();
     showDijkstra();
-    
     exitFaster();
 }
