@@ -4,10 +4,6 @@
 #include "ping.h"
 #include "math.h"
 
-/*
-Flash lights
-*/
-
 const int squareSize = 365; //size of the squares in the maze
 const float tickLength = 3.25;
 /**
@@ -26,11 +22,11 @@ const int west =8; //1000
  |04|05|06|07|
  |00|01|02|03|
  */
-unsigned int matrix [16] = {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+unsigned int matrix [16] = {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //The first number is initially set to 4 because the starting square is not part of the maze
 unsigned int discovered [16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //0-not discovered 1-discovered
 int direction = 1; //facing direction of the robot; 1-north 2-east 4-south 8-west
 int irLeft, irRight;  //Infrared distances left and right
-int targetFront = 21;
+int targetFront = 21; // target distance when coming back
 
 /**
  * STACK IMPLEMETATION
@@ -120,7 +116,8 @@ void calculateIR(int * irLeft, int * irRight, int * irLeftOld, int * irRightOld)
 }
 
 /**
- * Tries to detect an obstacle at the maximum possible distance 20 times.
+ * Tries to detect an obstacle at the maximum possible distance 20 times
+ * if it succeeds even only one of those 20 times, then there is something there.
  */
 void getIR()
 {
@@ -202,9 +199,8 @@ int checkWest(int bits)
 }
 
 /**
- * Moves one square ahead
+ * Moves one square ahead,trying to not crash
  */
-
 void driveSquare(){
     int dist = squareSize/tickLength;
     int left, right, leftStart, rightStart;
@@ -278,9 +274,9 @@ void turnInPlace(double angle){
 void turnLeft()
 {
     //turnInPlace(-PI/2);
-    drive_goto(0,0);
+    drive_goto(0,0);  //fixes strange issue when the robot moves backwards during the turn
     drive_goto(-25,26);
-    drive_goto(0,0);
+    drive_goto(0,0);  //fixes strange issue when the robot moves backwards during the turn
 }
 void turnRight()
 {
@@ -291,6 +287,7 @@ void turnRight()
 }
 void rotate180()
 {
+    //two right turns are more accurate than a 180 degree one??
     turnRight();
     turnRight();
 }
@@ -388,7 +385,9 @@ void gotoAdjacent(int from, int to)
         driveSquare();
     }
 }
-
+/**
+ * Checks if a square can be accessed from another one (there is no wall between them)
+ */
 int isAccessible(int from, int to)
 {
     int difference = to-from;
@@ -460,7 +459,7 @@ void pushNextToStack(int index)
 
 /**
  * DepthFirstSearch that is used to build a map for the graph
- * and then return to the initial position.
+ * and then return to the initial position, ready for Phase 2
  */
 void depthFirstSearch()
 {
@@ -525,7 +524,7 @@ void depthFirstSearch()
         drive_speed(10,10);
     }
     drive_speed(0,0);
-    int correction = ping_cm(8);
+    int correction = ping_cm(8);  //try to go to the center of the initial square
     if(correction!=20)
     {
       while(correction>20){
@@ -546,7 +545,7 @@ void depthFirstSearch()
 
 
 /**
- * centers the robot in the first square on the simulator
+ * centers the robot in the first square on the simulator before Phase 1
  */
 void center()
 {
@@ -555,7 +554,10 @@ void center()
 }
 
 
-//Dijkstra
+/**
+ * Dijkstra, used to find the quickest path to the exit, also takes into account
+ * the number of turns if two paths have the same length
+ */
 unsigned int distance[16];
 int turns[15];
 int visited[16];
@@ -646,8 +648,12 @@ void showDijkstra()
     }
 }
 
+//Slow but safe exit function using the PD
 void exitMaze()
 {
+    high(26);
+    pause(1000);
+    low(26);
     driveSquare();
     int from = path[0];
     for(int i=1;i<length;i++)
@@ -658,9 +664,12 @@ void exitMaze()
     }
 }
 
+//Quick exit function which doesn't stop at each square unless it has to make a turn
 void exitFaster()
 {
-    pause(2000);
+    high(26);
+    pause(1000); // Turn on the light for 1 sec
+    low(26);
     int size = 380;
     int i;
    // drive_goto(squareSize/tickLength,squareSize/tickLength);
